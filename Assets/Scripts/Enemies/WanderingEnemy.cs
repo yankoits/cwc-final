@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class WanderingEnemyMovement : MonoBehaviour
+public class WanderingEnemy : MonoBehaviour, IEnemy
 {
     public float moveRadius = 10.0f;
     public float rotationSpeed = 90.0f;
@@ -13,13 +13,18 @@ public class WanderingEnemyMovement : MonoBehaviour
     private float radius;
     private float currSpeed;
 
-    private EnemyState state;
+    public EnemyState state { get; private set; }
+
+    private Coroutine OnPause;
 
     private Vector3? moveDestination;
     private float destinationDelta;
     private const float angleDelta = 2;
 
     [SerializeField] LayerMask Lava;
+
+    private float waitWaySearching = 2;
+    private float waitBeingShot = 5;
 
     void Start()
     {
@@ -28,6 +33,8 @@ public class WanderingEnemyMovement : MonoBehaviour
 
         destinationDelta = GameManager.Instance.Level.tileSize;
         currSpeed = movingSpeed;
+
+        OnPause = null;
 
         state = EnemyState.WAITING;
     }
@@ -38,7 +45,7 @@ public class WanderingEnemyMovement : MonoBehaviour
         {
             case EnemyState.WAITING:
                 if (moveDestination == null)
-                    StartCoroutine(PauseAndRunAgain());
+                    OnPause = StartCoroutine(PauseAndRunAgain(waitWaySearching));
                 break;
 
             case EnemyState.TURNING:
@@ -71,12 +78,16 @@ public class WanderingEnemyMovement : MonoBehaviour
         }
     }
 
-    private IEnumerator PauseAndRunAgain()
+    private IEnumerator PauseAndRunAgain(float pauseTime)
     {
+        if (OnPause != null)
+            StopCoroutine(OnPause);
+
         moveDestination = GetNextDestination();
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(pauseTime);
 
         state = EnemyState.TURNING;
+        OnPause = null;
     }
 
     private Vector3 GetNextDestination()
@@ -119,6 +130,22 @@ public class WanderingEnemyMovement : MonoBehaviour
             if (point != Vector2.zero)
                 return new Vector3(point.x * randomRadius, 0, point.y * randomRadius);
         } while (true);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.collider.CompareTag("Player"))
+        {
+            moveDestination = null;
+            state = EnemyState.WAITING;
+        }
+    }
+
+    public void ReactToShot()
+    {
+        moveDestination = null;
+        state = EnemyState.SHOT;
+        OnPause = StartCoroutine(PauseAndRunAgain(waitBeingShot));
     }
 
 }
