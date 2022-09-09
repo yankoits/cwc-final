@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class WanderingEnemy : MonoBehaviour, IEnemy
@@ -8,16 +9,16 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
     public float rotationSpeed = 90.0f;
     public float movingSpeed = 3.0f;
 
-    public float deceleration = 25.0f;
-
-    private float radius;
+    private float deceleration = 25.0f;
+    private float accidentDeceleration = 4.5f;
+    private float deathAcceleration = 5.0f;
+    public float radius { get; private set; }
     private float currSpeed;
-
     public EnemyState state { get; private set; }
 
     private Coroutine OnPause;
 
-    private Vector3? moveDestination;
+    public Vector3? moveDestination { get; private set; }
     private float destinationDelta;
     private const float angleDelta = 2;
 
@@ -26,9 +27,17 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
     private float waitWaySearching = 2;
     private float waitBeingShot = 5;
 
-    void Start()
+    [SerializeField] Material matNormal;
+    [SerializeField] Material matFrozen;
+
+    private Renderer rend;
+
+    public void Init()
     {
-        Bounds bounds = GetComponent<Renderer>().bounds;
+        rend = GetComponent<Renderer>();
+        rend.material = matNormal;
+
+        Bounds bounds = rend.bounds;
         radius = Mathf.Sqrt(Mathf.Pow(bounds.max.z - bounds.min.z, 2) * 2);
 
         destinationDelta = GameManager.Instance.Level.tileSize;
@@ -73,6 +82,25 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
                 }
                 break;
 
+            case EnemyState.TRAFFIC_ACCIDENT:
+                Vector3 pushback = currSpeed * (Vector3)moveDestination * Time.deltaTime;
+                transform.Translate(pushback, Space.World);
+
+                currSpeed -= accidentDeceleration * Time.deltaTime;
+                if (currSpeed < 0)
+                {
+                    state = EnemyState.WAITING;
+                    moveDestination = null;
+                }
+                break;
+
+            case EnemyState.WASTED:
+                if (moveDestination == null)
+                    moveDestination = -transform.forward;
+                Vector3 roadToDeath = currSpeed * deathAcceleration * (Vector3)moveDestination * Time.deltaTime;
+                transform.Translate(roadToDeath, Space.World);
+                break;
+
             default:
                 break;
         }
@@ -85,6 +113,9 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
 
         moveDestination = GetNextDestination();
         yield return new WaitForSeconds(pauseTime);
+
+        if (rend.sharedMaterial == matFrozen)
+            rend.material = matNormal;
 
         state = EnemyState.TURNING;
         OnPause = null;
@@ -104,7 +135,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
             Ray sphereCast = new Ray(castOriginPoint, direction);
 
             // if lava is on the way, find another direction
-            if (Physics.SphereCast(sphereCast, radius, direction.magnitude, Lava))
+            if (Physics.SphereCast(sphereCast, radius, direction.magnitude/*, Lava*/))
                 direction = Vector3.zero;
 
         } while (direction == Vector3.zero);
@@ -134,7 +165,50 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.collider.CompareTag("Player"))
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Lava"))
+        {
+            if (OnPause != null)
+                StopCoroutine(OnPause);
+            Destroy(gameObject);
+            // add some special effect probably
+        }
+        else if (other.CompareTag("Player") && (state == EnemyState.SHOT))
+        {
+            Vector3 lastDestination = transform.position - other.transform.position;
+            lastDestination.y = 0;
+            ReactToKick(lastDestination);
+
+        }
+        else if (other.CompareTag("Enemy"))
+        {
+            // maybe not really a good idea, but will work for now
+            IEnemy collidedEnemy = other.gameObject.GetComponent<WanderingEnemy>();
+            if (collidedEnemy == null)
+                return;
+
+            // first one - wasted on the fly and regular one
+            if (state == EnemyState.WASTED)
+            {
+                collidedEnemy.ReactToKick((Vector3)moveDestination);
+            }
+
+            // second one - both on march
+            else if (state != EnemyState.SHOT && state != EnemyState.WASTED && collidedEnemy.state != EnemyState.WASTED)
+            {
+                state = EnemyState.TRAFFIC_ACCIDENT;
+
+                Vector3 pbDestination = transform.position - other.transform.position;
+                pbDestination.y = 0;
+                moveDestination = pbDestination;
+                
+                currSpeed = movingSpeed;
+            }
+        }
+        else
         {
             moveDestination = null;
             state = EnemyState.WAITING;
@@ -145,7 +219,15 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
     {
         moveDestination = null;
         state = EnemyState.SHOT;
+        rend.material = matFrozen;
         OnPause = StartCoroutine(PauseAndRunAgain(waitBeingShot));
     }
 
+
+    public void ReactToKick(Vector3 destination)
+    {
+        rend.material = matFrozen;
+        state = EnemyState.WASTED;
+        moveDestination = destination;
+    }
 }

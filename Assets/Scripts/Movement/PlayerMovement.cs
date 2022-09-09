@@ -5,7 +5,6 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     private Rigidbody rb;
-    private Collider currSurface;
 
     private float moveSpeed;
 
@@ -21,16 +20,6 @@ public class PlayerMovement : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // save first surface under player's feet
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position, Vector3.down, out hit))
-        {
-            if (hit.collider.CompareTag("Surface"))
-                currSurface = hit.collider;
-            else
-                currSurface = null; // but that's probably an error you need to catch
-        }
 
         pushbackForce = 350f;
         moveSpeed = 30f;
@@ -72,24 +61,25 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
-        if (collision.collider.CompareTag("Lava"))
+        if (other.CompareTag("Lava"))
         {
             // TODO: freezing should also bring invulnerability?
             state = PlayerState.FROZEN;
             StartCoroutine(OnLavaHitted());
         }
-        else if (collision.collider.CompareTag("Enemy"))
+        else if (other.CompareTag("Enemy"))
         {
-            state = PlayerState.FROZEN;
-            GameManager.Instance.Player.UpdateHealth(-1);
+            EnemyState enemyState = other.gameObject.GetComponent<IEnemy>().state;
+            if (enemyState != EnemyState.SHOT && enemyState != EnemyState.WASTED)
+            {
+                Debug.Log(other.GetComponent<IEnemy>().state);
+                state = PlayerState.FROZEN;
+                GameManager.Instance.Player.UpdateHealth(-1);
 
-            StartCoroutine(OnEnemyCollision(collision));
-        }
-        else if (collision.collider.CompareTag("Surface"))
-        {
-            currSurface = collision.collider;
+                StartCoroutine(OnEnemyCollision(other));
+            }
         }
     }
 
@@ -103,16 +93,17 @@ public class PlayerMovement : MonoBehaviour
         GameManager.Instance.Player.UpdateHealth(-1);
 
         currMovement = new Vector3(0, transform.position.y, 0) - transform.position;
-        // give game the time to rotate player/camera
+        
+        // give the game time to rotate player
         yield return new WaitForSeconds(2);
 
         // and unfreeze
         state = PlayerState.MOVING;
     }
 
-    public IEnumerator OnEnemyCollision(Collision col)
+    public IEnumerator OnEnemyCollision(Collider other)
     {
-        Vector3 pbDirection = col.collider.transform.position - transform.position;
+        Vector3 pbDirection = other.transform.position - transform.position;
         pbDirection = -pbDirection.normalized;
         pbDirection.y = pushbackY;
         rb.AddForce(pushbackForce * pbDirection);
