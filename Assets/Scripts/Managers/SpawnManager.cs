@@ -17,24 +17,24 @@ public class SpawnManager : MonoBehaviour, IGameManager
     {
         Debug.Log("Spawn manager starting...");
 
-        player = GameObject.Find("Player");
-
-        enemies = new List<GameObject>();
-        enemyCount = GameManager.Instance.Level.EnemyCount;
-        SpawnEnemies(enemyCount);
+        SpawnEnemies(GameManager.Instance.Level.EnemyCount);
 
         status = ManagerStatus.Started;
     }
 
     private void Update()
     {
-
     }
 
-    private void SpawnEnemies(int count)
+    public void SpawnEnemies(int count)
     {
+ 
         if (count < 1)
             return;
+
+        enemyCount = count;
+        player = GameObject.Find("Player");
+        enemies = new List<GameObject>();
 
         float enemyRadius;
         for (int i = 0; i < count; i++)
@@ -43,7 +43,7 @@ public class SpawnManager : MonoBehaviour, IGameManager
             var enemyObj = enemy.GetComponent<IEnemy>();
             if (enemyObj == null)
                 return;
-            
+
             enemyObj.Init();
             enemyRadius = enemyObj.radius;
             do
@@ -76,4 +76,5 @@ public class SpawnManager : MonoBehaviour, IGameManager
             UnityEngine.Random.Range(surfaceBounds.min.z + 2 * enemyRadius, surfaceBounds.max.z - 2 * enemyRadius)
         );
     }
+
 }

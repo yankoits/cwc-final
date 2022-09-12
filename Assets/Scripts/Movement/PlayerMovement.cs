@@ -7,8 +7,9 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody rb;
 
     private float moveSpeed;
+    private float rotationSpeed;
 
-    private float frozenRotation = 90f;
+    private float frozenRotation = 180f;
 
     private float pushbackForce;
     private float pushbackY = 0.5f;
@@ -22,7 +23,8 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
 
         pushbackForce = 350f;
-        moveSpeed = 30f;
+        moveSpeed = 70f;
+        rotationSpeed = 2f;
         currMovement = Vector3.forward * moveSpeed;
         state = PlayerState.JUST_SPAWNED;
     }
@@ -36,7 +38,7 @@ public class PlayerMovement : MonoBehaviour
             float horInput = Input.GetAxis("Horizontal");
 
             Vector3 right = Vector3.Cross(Vector3.up, currMovement);
-            movement = right * horInput * Time.deltaTime + currMovement;
+            movement = right * horInput * rotationSpeed * Time.deltaTime + currMovement;
 
             movement *= moveSpeed;
             // angular speed clamp
@@ -74,11 +76,12 @@ public class PlayerMovement : MonoBehaviour
             EnemyState enemyState = other.gameObject.GetComponent<IEnemy>().state;
             if (enemyState != EnemyState.SHOT && enemyState != EnemyState.WASTED)
             {
-                Debug.Log(other.GetComponent<IEnemy>().state);
                 state = PlayerState.FROZEN;
-                GameManager.Instance.Player.UpdateHealth(-1);
-
-                StartCoroutine(OnEnemyCollision(other));
+                int health = GameManager.Instance.Player.UpdateHealth(-1);
+                if (health <= 0)
+                    state = PlayerState.PASSIVE;
+                else
+                    StartCoroutine(OnEnemyCollision(other));
             }
         }
     }
@@ -90,15 +93,23 @@ public class PlayerMovement : MonoBehaviour
 
         rb.AddForce(pushbackForce * pbDirection);
 
-        GameManager.Instance.Player.UpdateHealth(-1);
+        int health = GameManager.Instance.Player.UpdateHealth(-1);
 
-        currMovement = new Vector3(0, transform.position.y, 0) - transform.position;
-        
-        // give the game time to rotate player
-        yield return new WaitForSeconds(2);
+        if (health <= 0)
+        {
+            state = PlayerState.PASSIVE;
+            yield return null;
+        }
+        else
+        {
+            currMovement = new Vector3(0, transform.position.y, 0) - transform.position;
 
-        // and unfreeze
-        state = PlayerState.MOVING;
+            // give the game time to rotate player
+            yield return new WaitForSeconds(1);
+
+            // and unfreeze
+            state = PlayerState.MOVING;
+        }
     }
 
     public IEnumerator OnEnemyCollision(Collider other)
@@ -108,7 +119,7 @@ public class PlayerMovement : MonoBehaviour
         pbDirection.y = pushbackY;
         rb.AddForce(pushbackForce * pbDirection);
 
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(1);
         state = PlayerState.MOVING;
     }
 

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class LevelManager : MonoBehaviour, IGameManager
 {
@@ -10,6 +11,8 @@ public class LevelManager : MonoBehaviour, IGameManager
     public float gravity { get; private set; }
     public float LavaBound { get; private set; }
     public Bounds SurfaceBounds { get; private set; }
+    private int currLevel;
+    private bool checkIfLevelCompleted;
     public void Init()
     {
         Debug.Log("Level manager starting...");
@@ -18,12 +21,22 @@ public class LevelManager : MonoBehaviour, IGameManager
         tileSize = 1.0f;
         gravity = -9.8f;
 
-        // should update on next levels (when they will be existing)
-        EnemyCount = 10;
-        LavaBound = GetLavaBoundary();
-        SurfaceBounds = GetSurfaceBounds();
+        currLevel = 1;
+        GetLevelData();
+
+        checkIfLevelCompleted = false;
 
         status = ManagerStatus.Started;
+    }
+
+    private void OnEnable()
+    {
+        Messenger.AddListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
+    }
+
+    private void OnDisable()
+    {
+        Messenger.RemoveListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
     }
 
     public float GetLavaBoundary()
@@ -68,5 +81,43 @@ public class LevelManager : MonoBehaviour, IGameManager
         }
         Debug.Log(bounds);
         return bounds;
+    }
+
+    private void Update()
+    {
+        if (checkIfLevelCompleted) { 
+            EnemyCount = GameObject.FindGameObjectsWithTag("Enemy").Length;
+            if (EnemyCount == 0)
+            {
+                Messenger.Broadcast(GameEvent.LEVEL_BEATEN);
+            }
+            else
+            {
+                Debug.Log(EnemyCount);
+            }
+            checkIfLevelCompleted = false;
+        }
+    }
+
+    public void LoadNextLevel()
+    {
+        currLevel += 1;
+        if (currLevel <= 2)
+            SceneManager.LoadScene($"Level{currLevel}");
+        else
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        
+        GetLevelData();
+    }
+
+    public void GetLevelData() { 
+        EnemyCount = currLevel /** 3*/;
+        LavaBound = GetLavaBoundary();
+        SurfaceBounds = GetSurfaceBounds();
+    }
+
+    public void OnEnemyDeath()
+    {
+        checkIfLevelCompleted = true;
     }
 }

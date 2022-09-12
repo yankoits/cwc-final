@@ -12,7 +12,7 @@ public class PlayerManager : MonoBehaviour, IGameManager
         Debug.Log("Player manager starting...");
 
         // starting settings
-        UpdateData(3, 3);
+        UpdateData(5, 5);
 
         status = ManagerStatus.Started;
     }
@@ -23,18 +23,18 @@ public class PlayerManager : MonoBehaviour, IGameManager
         this.maxHealth = maxHealth;
     }
 
-    public void UpdateHealth(int delta = -1)
+    public int UpdateHealth(int delta = -1)
     {
         health += delta;
 
         if (health > maxHealth)
             health = maxHealth;
-        else if (health < 0)
+        else if (health <= 0)
         {
             health = 0;
-            // add DEATH here 
+            Messenger.Broadcast(GameEvent.GAME_OVER);
         }
-
-        Debug.Log($"Health: {health}/{maxHealth}");
+        Messenger.Broadcast(GameEvent.HEALTH_UPDATED);
+        return health;
     }
 }

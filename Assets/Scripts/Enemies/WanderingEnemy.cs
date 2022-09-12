@@ -174,6 +174,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
             if (OnPause != null)
                 StopCoroutine(OnPause);
             Destroy(gameObject);
+            Messenger.Broadcast(GameEvent.ENEMY_IS_DEAD);
             // add some special effect probably
         }
         else if (other.CompareTag("Player") && (state == EnemyState.SHOT))
@@ -230,4 +231,5 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         state = EnemyState.WASTED;
         moveDestination = destination;
     }
+
 }
