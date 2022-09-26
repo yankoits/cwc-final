@@ -5,6 +5,7 @@ using UnityEngine;
 public class WanderingEnemy : MonoBehaviour, IEnemy
 {
     // IEnemy inherited properties
+    // comment for unity learn course: ENCAPSULATION, but pretty generic ofc
     public EnemyState state { get; private set; }
     public Vector3? moveDestination { get; private set; }
     public float radius { get; private set; }
@@ -18,7 +19,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
     private bool berzerkerModeOn;
 
     // max distance for every next destination to move
-    private const float moveRadius = 12.0f;
+    protected const float moveRadius = 12.0f;
 
     // main speeds
     private const float rotationSpeed = 180.0f;
@@ -57,6 +58,8 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         state = EnemyState.WAITING;
     }
 
+    // comment for unity learn course: ABSTRACTION
+    // all the methods to call in various states are pretty abstracted
     void Update()
     {
         switch (state)
@@ -216,7 +219,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         OnPause = null;
     }
 
-    private Vector3 GetNextDestination()
+    protected virtual Vector3 GetNextDestination()
     {
         Vector3 direction;
 

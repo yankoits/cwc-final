@@ -7,7 +7,8 @@ public class SpawnManager : MonoBehaviour, IManager
 {
     public ManagerStatus status { get; private set; }
 
-    [SerializeField] GameObject enemyPrefab;
+    [SerializeField] GameObject wanderingEnemyPrefab;
+    [SerializeField] GameObject sandKissingEnemyPrefab;
 
     private List<GameObject> enemies;
 
@@ -28,7 +29,13 @@ public class SpawnManager : MonoBehaviour, IManager
         float enemyRadius;
         for (int i = 0; i < count; i++)
         {
-            GameObject enemy = Instantiate(enemyPrefab);
+            GameObject enemy;
+            // temporary solution
+            if (i % 3 == 0)
+                enemy = Instantiate(sandKissingEnemyPrefab);
+            else
+                enemy = Instantiate(wanderingEnemyPrefab);
+
             var enemyObj = enemy.GetComponent<IEnemy>();
             if (enemyObj == null)
                 return;

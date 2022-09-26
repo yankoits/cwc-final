@@ -117,7 +117,8 @@ public class LevelManager : MonoBehaviour, IManager
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         GetLevelData();
-        Messenger.Broadcast(GameEvent.LEVEL_START);
+        if (scene.name != "Menu")
+            Messenger.Broadcast(GameEvent.LEVEL_START);
     }
 
     public void GetLevelData()
