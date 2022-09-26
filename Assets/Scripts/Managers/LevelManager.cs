@@ -16,10 +16,6 @@ public class LevelManager : MonoBehaviour, IManager
     public int LevelScore { get; private set; }
     private bool checkIfLevelCompleted;
 
-    private void Awake()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
     public void Init()
     {
         Debug.Log("Level manager starting...");
@@ -34,6 +30,8 @@ public class LevelManager : MonoBehaviour, IManager
         checkIfLevelCompleted = false;
 
         status = ManagerStatus.Started;
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void OnEnable()
@@ -88,7 +86,6 @@ public class LevelManager : MonoBehaviour, IManager
 
             bounds.SetMinMax(min, max);
         }
-        Debug.Log(bounds);
         return bounds;
     }
 
@@ -108,10 +105,10 @@ public class LevelManager : MonoBehaviour, IManager
     public void LoadNextLevel()
     {
         currLevel += 1;
-            if (currLevel <= maxLevel)
-                SceneManager.LoadScene($"Level{currLevel}");
-            else
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        if (currLevel <= maxLevel)
+            SceneManager.LoadScene($"Level{currLevel}");
+        else
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -123,7 +120,7 @@ public class LevelManager : MonoBehaviour, IManager
 
     public void GetLevelData()
     {
-        EnemyCount = currLevel * 2;
+        EnemyCount = currLevel * 3;
         LevelScore = currLevel * 10;
         LavaBound = GetLavaBoundary();
         SurfaceBounds = GetSurfaceBounds();
@@ -139,5 +136,10 @@ public class LevelManager : MonoBehaviour, IManager
         currLevel = 1;
         // maybe it's good this line is here?
         // can be handy when/if restart from level X would be possible
+    }
+
+    public void Reset()
+    {
+        currLevel = 1;
     }
 }

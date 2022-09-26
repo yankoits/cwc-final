@@ -16,6 +16,7 @@ public class ScoreManager : MonoBehaviour, IManager
         HighScore = 0;
         HighScore = PlayerPrefs.GetInt("HighScore");
 
+
         status = ManagerStatus.Started;
     }
 
@@ -59,4 +60,8 @@ public class ScoreManager : MonoBehaviour, IManager
         PlayerName = name;
     }
 
+    public void Reset()
+    {
+        Score = 0;
+    }
 }

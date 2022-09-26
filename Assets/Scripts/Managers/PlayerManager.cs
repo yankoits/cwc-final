@@ -10,6 +10,8 @@ public class PlayerManager : MonoBehaviour, IManager
     public int health { get; private set; }
 
     [SerializeField] GameObject playerPrefab;
+
+    private GameObject player;
     public void Init()
     {
         Debug.Log("Player manager starting...");
@@ -23,7 +25,8 @@ public class PlayerManager : MonoBehaviour, IManager
 
     public Transform Spawn()
     {
-        GameObject player = Instantiate(playerPrefab);
+        player = Instantiate(playerPrefab);
+        UpdateData(maxHealth, maxHealth);
         return player.transform;
     }
 

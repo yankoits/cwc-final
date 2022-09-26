@@ -9,14 +9,16 @@ using UnityEngine.SceneManagement;
 [RequireComponent(typeof(PlayerManager))]
 [RequireComponent(typeof(SpawnManager))]
 [RequireComponent(typeof(ScoreManager))]
+[RequireComponent(typeof(ObjectPooler))]
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
+    public static GameManager Instance { get; private set; } = null;
     private List<IManager> startSequence;
     public LevelManager Level { get; private set; }
     public PlayerManager Player { get; private set; }
     public SpawnManager Spawn { get; private set; }
     public ScoreManager Score { get; private set; }
+    public ObjectPooler Ammo { get; private set; }
 
     private bool paused;
 
@@ -36,14 +38,20 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        DontDestroyOnLoad(gameObject);
         if (Instance != null && Instance != this)
         {
-            Destroy(this);
+            Destroy(gameObject);
+            CleanData();
             return;
         }
+        
         Instance = this;
         paused = false;
+
+        DontDestroyOnLoad(gameObject);
+
+        Ammo = GetComponentInChildren<ObjectPooler>();
+        Ammo.CreatePool();
 
         Level = GetComponentInChildren<LevelManager>();
         Player = GetComponentInChildren<PlayerManager>();
@@ -90,7 +98,7 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("All managers started up");
-        
+
         Messenger.Broadcast(StartupEvent.MANAGERS_STARTED);
     }
 
@@ -116,9 +124,15 @@ public class GameManager : MonoBehaviour
 
     private void OnLevelStart()
     {
-        Transform playerTransform = Player.Spawn();
+        Transform playerTransform = Instance.Player.Spawn();
         GetComponentInChildren<CameraMovement>().Init(playerTransform);
-        Spawn.SpawnEnemies(playerTransform.position, Level.EnemyCount);
+        Instance.Spawn.SpawnEnemies(playerTransform.position, Instance.Level.EnemyCount);
+    }
+
+    private void CleanData()
+    {
+        Instance.Score.Reset();
+        Instance.Level.Reset();
     }
 
     private void Update()
@@ -144,10 +158,7 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(3);
 
-        int maxHealth = Player.maxHealth;
-        Player.UpdateData(maxHealth, maxHealth);
-
-        Level.LoadNextLevel();
+        Instance.Level.LoadNextLevel();
         ResumeGame();
         yield return new WaitForNextFrameUnit();
     }
@@ -155,7 +166,6 @@ public class GameManager : MonoBehaviour
     private IEnumerator WaitAndLoadMainMenu()
     {
         yield return new WaitForSecondsRealtime(3);
-        Destroy(gameObject);
         SceneManager.LoadScene("Menu");
         ResumeGame();
     }

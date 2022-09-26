@@ -28,7 +28,10 @@ public class StartMenu : MonoBehaviour
     }
     void Start()
     {
-        startButton.interactable = false;
+        if (GameManager.Instance == null)
+        {
+            startButton.interactable = false;
+        }
         string highScorer = PlayerPrefs.GetString("Player");
         if (highScorer != "")
             highScorer = $" / {highScorer}";

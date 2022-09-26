@@ -23,7 +23,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
 
     // main speeds
     private const float rotationSpeed = 180.0f;
-    private const float movingSpeed = 9.0f;
+    private const float movingSpeed = 6.0f;
     private float currSpeed;
 
     // main accelerations/decelerations
@@ -60,7 +60,7 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
 
     // comment for unity learn course: ABSTRACTION
     // all the methods to call in various states are pretty abstracted
-    void Update()
+    void FixedUpdate()
     {
         switch (state)
         {

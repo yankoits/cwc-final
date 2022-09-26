@@ -5,7 +5,7 @@ using UnityEngine;
 public class DestroyOutOfBounds : MonoBehaviour
 {
 
-    void Update()
+    void FixedUpdate()
     {
         if (Mathf.Abs(transform.position.x) > GameManager.Instance.Level.LavaBound ||
             Mathf.Abs(transform.position.z) > GameManager.Instance.Level.LavaBound)

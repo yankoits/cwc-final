@@ -7,7 +7,7 @@ public class MoveForward : MonoBehaviour
 {
     private float speed = 40f;
 
-    void Update()
+    void FixedUpdate()
     {
         transform.position = transform.position + transform.forward * speed * Time.deltaTime;
     }

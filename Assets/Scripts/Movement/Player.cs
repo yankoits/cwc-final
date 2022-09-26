@@ -27,22 +27,23 @@ public class Player : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        
+
         Look = GetComponent<PlayerLook>();
         Look.Init();
 
         Gun = GetComponent<PlayerShooting>();
+        Gun.FastReload();
 
         pushbackForce = 350f;
-        moveSpeed = 70f;
+        moveSpeed = 12f;
         rotationSpeed = 2f;
 
-        currMovement = Vector3.forward * moveSpeed;
+        currMovement = Vector3.forward;
 
         state = PlayerState.JUST_SPAWNED;
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (state == PlayerState.MOVING)
         {
@@ -52,7 +53,10 @@ public class Player : MonoBehaviour
         {
             Freeze();
         }
-        else if (state == PlayerState.JUST_SPAWNED)
+    }
+    private void Update()
+    {
+        if (state == PlayerState.JUST_SPAWNED)
         {
             if (Input.anyKeyDown)
                 state = PlayerState.MOVING;
@@ -64,12 +68,11 @@ public class Player : MonoBehaviour
         }
     }
 
-
     private void Move()
     {
         float horInput = Input.GetAxis("Horizontal");
         Vector3 right = Vector3.Cross(Vector3.up, currMovement);
-        
+
         Vector3 movement = right * horInput * rotationSpeed * Time.deltaTime + currMovement;
         movement *= moveSpeed;
         // angular speed clamp

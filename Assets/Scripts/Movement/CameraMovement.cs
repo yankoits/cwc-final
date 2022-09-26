@@ -14,7 +14,7 @@ public class CameraMovement : MonoBehaviour
         offset = playerTransform.position - transform.position;
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (playerTransform != null)
             transform.position = playerTransform.position - offset;

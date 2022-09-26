@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class PlayerShooting : MonoBehaviour
 {
-    private PlayerLook Look;
     public bool canShoot { get; private set; }
     public float reloadTime { get; private set; }
 
@@ -21,8 +20,7 @@ public class PlayerShooting : MonoBehaviour
     private void Start()
     {
         canShoot = true;
-        reloadTime = 3f;
-        Look = GetComponent<PlayerLook>();
+        reloadTime = 2f;
     }
 
     public void Shoot()
@@ -30,7 +28,7 @@ public class PlayerShooting : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space))
         {
             // Get a projectile object from the pool
-            GameObject projectile = ObjectPooler.SharedInstance.GetPooledObject();
+            GameObject projectile = GameManager.Instance.Ammo.GetPooledObject();
             if (projectile != null && canShoot)
             {
                 projectile.SetActive(true); // activate it
@@ -40,6 +38,7 @@ public class PlayerShooting : MonoBehaviour
             }
         }
     }
+
 
     public void Reload(PlayerLook look)
     {
@@ -51,4 +50,8 @@ public class PlayerShooting : MonoBehaviour
         canShoot = true;
     }
 
+    public void FastReload()
+    {
+        canShoot = true;
+    }
 }

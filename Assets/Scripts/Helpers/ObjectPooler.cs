@@ -4,17 +4,11 @@ using UnityEngine;
 
 public class ObjectPooler : MonoBehaviour
 {
-    public static ObjectPooler SharedInstance;
     public List<GameObject> pooledObjects;
     [SerializeField] GameObject objectToPool;
     [SerializeField] int amountToPool;
 
-    void Awake()
-    {
-        SharedInstance = this;
-    }
-
-    void Start()
+    public void CreatePool()
     {
         // Loop through list of pooled objects, deactivating them and adding them to the list 
         pooledObjects = new List<GameObject>();
@@ -32,6 +26,7 @@ public class ObjectPooler : MonoBehaviour
         // For as many objects as are in the pooledObjects list
         for (int i = 0; i < pooledObjects.Count; i++)
         {
+            Debug.Log(pooledObjects[i]);
             // if the pooled object is NOT active, return that object 
             if (!pooledObjects[i].activeInHierarchy)
             {
