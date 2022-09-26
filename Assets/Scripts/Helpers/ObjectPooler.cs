@@ -9,16 +9,14 @@ public class ObjectPooler : MonoBehaviour
     [SerializeField] GameObject objectToPool;
     [SerializeField] int amountToPool;
 
-
     void Awake()
     {
         SharedInstance = this;
     }
 
-    // Start is called before the first frame update
     void Start()
     {
-        // Loop through list of pooled objects,deactivating them and adding them to the list 
+        // Loop through list of pooled objects, deactivating them and adding them to the list 
         pooledObjects = new List<GameObject>();
         for (int i = 0; i < amountToPool; i++)
         {
@@ -34,7 +32,7 @@ public class ObjectPooler : MonoBehaviour
         // For as many objects as are in the pooledObjects list
         for (int i = 0; i < pooledObjects.Count; i++)
         {
-            // if the pooled objects is NOT active, return that object 
+            // if the pooled object is NOT active, return that object 
             if (!pooledObjects[i].activeInHierarchy)
             {
                 return pooledObjects[i];

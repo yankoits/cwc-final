@@ -14,8 +14,7 @@ GameObject:
   - component: {fileID: 7546314899553943069}
   - component: {fileID: 7546314899553943070}
   - component: {fileID: 7546314899553943041}
-  - component: {fileID: 7546314899553943040}
-  - component: {fileID: 7546314899553943047}
+  - component: {fileID: 6926282125283918706}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Enemy
@@ -115,7 +114,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 1
   m_Interpolate: 0
-  m_Constraints: 80
+  m_Constraints: 84
   m_CollisionDetection: 0
 --- !u!114 &7546314899553943041
 MonoBehaviour:
@@ -129,38 +128,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7d42a5cec6cea040b45cf1d659af39f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveRadius: 10
-  rotationSpeed: 90
-  movingSpeed: 3
-  deceleration: 1
-  deathAcceleration: 10
-  currSpeed: 0
-  Lava:
-    serializedVersion: 2
-    m_Bits: 8
+--- !u!114 &6926282125283918706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7546314899553943064}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70b8bd928d8ef1e44baaf9f8a48fd374, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   matNormal: {fileID: 2100000, guid: 67328d8517eb1c24f85274aa391b0ee1, type: 2}
+  matBerzerker: {fileID: 2100000, guid: afd129a48fcab1b4098a874e4a1ee15a, type: 2}
   matFrozen: {fileID: 2100000, guid: de403575fa4dac8469f7f6cbdfbb282b, type: 2}
---- !u!114 &7546314899553943040
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7546314899553943064}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d633c6287f6bdca4cb0ec77631278df8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &7546314899553943047
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7546314899553943064}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f1ea4503adb5c114ebb0ad2cc60160b5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

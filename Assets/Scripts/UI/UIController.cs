@@ -9,12 +9,14 @@ public class UIController : MonoBehaviour
     [SerializeField] Image[] healthBar;
     [SerializeField] Image informationBlock;
     [SerializeField] TMP_Text informationText;
+    [SerializeField] TMP_Text scoreText;
 
     private void OnEnable()
     {
         Messenger.AddListener(GameEvent.HEALTH_UPDATED, OnHealthUpdated);
         Messenger.AddListener(GameEvent.GAME_OVER, OnGameOver);
-        Messenger.AddListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger<int>.AddListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger.AddListener(GameEvent.SCORE_UPDATED, OnScoreUpdated);
         Messenger.AddListener(GameEvent.PAUSE, OnPause);
         Messenger.AddListener(GameEvent.UNPAUSE, OnUnpause);
     }
@@ -23,7 +25,8 @@ public class UIController : MonoBehaviour
     {
         Messenger.RemoveListener(GameEvent.HEALTH_UPDATED, OnHealthUpdated);
         Messenger.RemoveListener(GameEvent.GAME_OVER, OnGameOver);
-        Messenger.RemoveListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger<int>.RemoveListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger.RemoveListener(GameEvent.SCORE_UPDATED, OnScoreUpdated);
         Messenger.RemoveListener(GameEvent.PAUSE, OnPause);
         Messenger.RemoveListener(GameEvent.UNPAUSE, OnUnpause);
     }
@@ -32,11 +35,7 @@ public class UIController : MonoBehaviour
     {
         OnHealthUpdated();
         informationBlock.gameObject.SetActive(false);
-    }
-
-    void Update()
-    {
-
+        scoreText.text = $"Score: {GameManager.Instance.Score.Score}";
     }
 
     public void OnHealthUpdated()
@@ -64,9 +63,13 @@ public class UIController : MonoBehaviour
     {
         informationBlock.gameObject.SetActive(false);
     }
-    private void OnLevelBeaten()
+    private void OnLevelBeaten(int score)
     {
-        informationText.text = "level completed.";
+        informationText.text = "level complete.";
         informationBlock.gameObject.SetActive(true);
+    }
+    private void OnScoreUpdated()
+    {
+        scoreText.text = $"Score: {GameManager.Instance.Score.Score}";
     }
 }

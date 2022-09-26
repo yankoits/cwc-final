@@ -1,50 +1,59 @@
 using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
+[RequireComponent(typeof(WanderingEnemyLook))]
 public class WanderingEnemy : MonoBehaviour, IEnemy
 {
-    public float moveRadius = 10.0f;
-    public float rotationSpeed = 90.0f;
-    public float movingSpeed = 3.0f;
-
-    private float deceleration = 25.0f;
-    private float accidentDeceleration = 4.5f;
-    private float deathAcceleration = 5.0f;
-    public float radius { get; private set; }
-    private float currSpeed;
+    // IEnemy inherited properties
     public EnemyState state { get; private set; }
+    public Vector3? moveDestination { get; private set; }
+    public float radius { get; private set; }
+    public int score { get; } = 1;
+    public int power { get; } = 1;
+
+
+    // she's got the look
+    private WanderingEnemyLook Look;
+
+    private bool berzerkerModeOn;
+
+    // max distance for every next destination to move
+    private const float moveRadius = 12.0f;
+
+    // main speeds
+    private const float rotationSpeed = 180.0f;
+    private const float movingSpeed = 9.0f;
+    private float currSpeed;
+
+    // main accelerations/decelerations
+    private float deceleration = 75.0f;
+    private float accidentDeceleration = 20.0f;
+
+    private float deathBoost = 2.5f;
+    private float berzerkerBoost = 2.0f;
+
 
     private Coroutine OnPause;
 
-    public Vector3? moveDestination { get; private set; }
     private float destinationDelta;
     private const float angleDelta = 2;
 
-    [SerializeField] LayerMask Lava;
+    private float waitTimeWaySearch = 2.0f;
+    private float waitTimeBeingShot = 5.0f;
 
-    private float waitWaySearching = 2;
-    private float waitBeingShot = 5;
-
-    [SerializeField] Material matNormal;
-    [SerializeField] Material matFrozen;
-
-    private Renderer rend;
 
     public void Init()
     {
-        rend = GetComponent<Renderer>();
-        rend.material = matNormal;
+        Look = GetComponent<WanderingEnemyLook>();
+        Look.Init();
+        radius = Look.GetRadius();
 
-        Bounds bounds = rend.bounds;
-        radius = Mathf.Sqrt(Mathf.Pow(bounds.max.z - bounds.min.z, 2) * 2);
+        berzerkerModeOn = false;
 
-        destinationDelta = GameManager.Instance.Level.tileSize;
         currSpeed = movingSpeed;
+        destinationDelta = GameManager.Instance.Level.tileSize;
 
         OnPause = null;
-
         state = EnemyState.WAITING;
     }
 
@@ -54,51 +63,23 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         {
             case EnemyState.WAITING:
                 if (moveDestination == null)
-                    OnPause = StartCoroutine(PauseAndRunAgain(waitWaySearching));
+                    OnPause = StartCoroutine(PauseAndRunAgain(waitTimeWaySearch));
                 break;
 
             case EnemyState.TURNING:
-                Vector3 destination = (Vector3)moveDestination;
-
-                Quaternion targetRotation = Quaternion.LookRotation(destination - transform.position);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-
-                if (Quaternion.Angle(transform.rotation, targetRotation) < angleDelta)
-                    state = EnemyState.MOVING;
+                Turn();
                 break;
 
             case EnemyState.MOVING:
-                Vector3 movement = currSpeed * transform.forward * Time.deltaTime;
-                transform.Translate(movement, Space.World);
-
-                if (Vector3.Distance((Vector3)moveDestination, transform.position) < destinationDelta)
-                {
-                    currSpeed -= deceleration * Time.deltaTime;
-                    if (currSpeed <= 0)
-                    {
-                        moveDestination = null;
-                        state = EnemyState.WAITING;
-                    }
-                }
+                Move();
                 break;
 
             case EnemyState.TRAFFIC_ACCIDENT:
-                Vector3 pushback = currSpeed * (Vector3)moveDestination * Time.deltaTime;
-                transform.Translate(pushback, Space.World);
-
-                currSpeed -= accidentDeceleration * Time.deltaTime;
-                if (currSpeed < 0)
-                {
-                    state = EnemyState.WAITING;
-                    moveDestination = null;
-                }
+                PushbackFromAccident();
                 break;
 
             case EnemyState.WASTED:
-                if (moveDestination == null)
-                    moveDestination = -transform.forward;
-                Vector3 roadToDeath = currSpeed * deathAcceleration * (Vector3)moveDestination * Time.deltaTime;
-                transform.Translate(roadToDeath, Space.World);
+                FlyOffSurface();
                 break;
 
             default:
@@ -106,17 +87,131 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         }
     }
 
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Lava"))
+        {
+            ReactToLava();
+        }
+        else if (other.CompareTag("Player") && (state == EnemyState.SHOT))
+        {
+            // kick from the collision point
+            // not very realistic, maybe think of better ways
+            ReactToKick(transform.position - other.transform.position);
+        }
+        else if (other.CompareTag("Enemy"))
+        {
+            ReactToFriendlyCollision(other);
+        }
+        else if (other.CompareTag("Bullet"))
+        {
+            other.gameObject.SetActive(false);
+            ReactToShot();
+        }
+        else
+        {
+            // if something else is on the map (shouldn't be though)
+            moveDestination = null;
+            state = EnemyState.WAITING;
+        }
+    }
+
+    // slowly turns enemy so that after the last iteration
+    // he looks straight to the point he should be moving
+    private void Turn()
+    {
+        if (moveDestination == null)
+        {
+            state = EnemyState.WAITING;
+            return;
+        }
+
+        float berzCoeff = berzerkerModeOn ? berzerkerBoost : 1;
+
+        Vector3 destination = (Vector3)moveDestination;
+
+        Quaternion targetRotation = Quaternion.LookRotation(destination - transform.position);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * berzCoeff * Time.deltaTime);
+
+        if (Quaternion.Angle(transform.rotation, targetRotation) < angleDelta)
+            state = EnemyState.MOVING;
+    }
+
+    // slowly moves enemy towards the destination point
+    // which is forward, cause enemy was turned so beforehand
+    // decelerates near the final point to a full stop
+    private void Move()
+    {
+        if (moveDestination == null)
+        {
+            state = EnemyState.WAITING;
+            return;
+        }
+
+        float berzCoeff = berzerkerModeOn ? berzerkerBoost : 1;
+
+        Vector3 movement = currSpeed * berzCoeff * transform.forward * Time.deltaTime;
+        movement.y = 0f;
+        transform.Translate(movement, Space.World);
+
+        if (Vector3.Distance((Vector3)moveDestination, transform.position) < destinationDelta)
+        {
+            currSpeed -= deceleration * Time.deltaTime;
+            if (currSpeed <= 0)
+            {
+                moveDestination = null;
+                state = EnemyState.WAITING;
+            }
+        }
+    }
+
+    // slowly moves enemy to the destination point
+    // this is pushback, so enemy moving backwards
+    // decelerates from the start with every iteration
+    private void PushbackFromAccident()
+    {
+        if (moveDestination == null)
+        {
+            state = EnemyState.WAITING;
+            return;
+        }
+
+        Vector3 pushback = currSpeed * (Vector3)moveDestination * Time.deltaTime;
+        transform.Translate(pushback, Space.World);
+
+        currSpeed -= accidentDeceleration * Time.deltaTime;
+        if (currSpeed < 0)
+        {
+            moveDestination = null;
+            state = EnemyState.WAITING;
+        }
+    }
+
+    // moving the enemy off the surface at high speed
+    private void FlyOffSurface()
+    {
+        // should be true just after collision with player
+        if (moveDestination == null)
+            moveDestination = -transform.forward;
+
+        Vector3 roadToDeath = currSpeed * deathBoost * (Vector3)moveDestination * Time.deltaTime;
+        transform.Translate(roadToDeath, Space.World);
+    }
+
+
     private IEnumerator PauseAndRunAgain(float pauseTime)
     {
         if (OnPause != null)
             StopCoroutine(OnPause);
 
         moveDestination = GetNextDestination();
+
         yield return new WaitForSeconds(pauseTime);
 
-        if (rend.sharedMaterial == matFrozen)
-            rend.material = matNormal;
+        Look.Unfreeze(berzerkerModeOn);
 
+        currSpeed = movingSpeed;
         state = EnemyState.TURNING;
         OnPause = null;
     }
@@ -126,110 +221,85 @@ public class WanderingEnemy : MonoBehaviour, IEnemy
         Vector3 direction;
 
         Vector3 castOriginPoint = transform.position;
+
+        // casting on the surface level, cause only lava needs to be found
         castOriginPoint.y = 0;
 
+        // didn't want to leave the endless cycle here, so
+        // enemy have 2048 tries to find its way, or he goes straight into lava
+        int tries = 0;
+        int maxTries = 2048;
         do
         {
-            direction = RandomPointOnCircleEdge(moveRadius);
-
+            direction = Geometry.RandomPointOnCircleEdge(maxRadius: moveRadius);
             Ray sphereCast = new Ray(castOriginPoint, direction);
 
-            // if lava is on the way, find another direction
-            if (Physics.SphereCast(sphereCast, radius, direction.magnitude/*, Lava*/))
-                direction = Vector3.zero;
+            // if no lava on the chosen way, cycle breaks
+            if (!Physics.SphereCast(sphereCast, radius, direction.magnitude))
+                break;
 
-        } while (direction == Vector3.zero);
+        } while (++tries < maxTries);
 
-        direction = new Vector3(
+        return new Vector3(
             direction.x + transform.position.x,
             transform.position.y,
             direction.z + transform.position.z
         );
-
-        currSpeed = movingSpeed;
-
-        return direction;
-    }
-
-    private Vector3 RandomPointOnCircleEdge(float maxRadius)
-    {
-        Vector2 point;
-        do
-        {
-            point = Random.insideUnitCircle.normalized;
-            float randomRadius = Random.Range(maxRadius / 2, maxRadius);
-            if (point != Vector2.zero)
-                return new Vector3(point.x * randomRadius, 0, point.y * randomRadius);
-        } while (true);
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Lava"))
-        {
-            if (OnPause != null)
-                StopCoroutine(OnPause);
-            Destroy(gameObject);
-            Messenger.Broadcast(GameEvent.ENEMY_IS_DEAD);
-            // add some special effect probably
-        }
-        else if (other.CompareTag("Player") && (state == EnemyState.SHOT))
-        {
-            Vector3 lastDestination = transform.position - other.transform.position;
-            lastDestination.y = 0;
-            ReactToKick(lastDestination);
-
-        }
-        else if (other.CompareTag("Enemy"))
-        {
-            // maybe not really a good idea, but will work for now
-            IEnemy collidedEnemy = other.gameObject.GetComponent<WanderingEnemy>();
-            if (collidedEnemy == null)
-                return;
-
-            // first one - wasted on the fly and regular one
-            if (state == EnemyState.WASTED)
-            {
-                collidedEnemy.ReactToKick((Vector3)moveDestination);
-            }
-
-            // second one - both on march
-            else if (state != EnemyState.SHOT && state != EnemyState.WASTED && collidedEnemy.state != EnemyState.WASTED)
-            {
-                state = EnemyState.TRAFFIC_ACCIDENT;
-
-                Vector3 pbDestination = transform.position - other.transform.position;
-                pbDestination.y = 0;
-                moveDestination = pbDestination;
-                
-                currSpeed = movingSpeed;
-            }
-        }
-        else
-        {
-            moveDestination = null;
-            state = EnemyState.WAITING;
-        }
     }
 
     public void ReactToShot()
     {
+        Look.Freeze();
         moveDestination = null;
         state = EnemyState.SHOT;
-        rend.material = matFrozen;
-        OnPause = StartCoroutine(PauseAndRunAgain(waitBeingShot));
+        
+        OnPause = StartCoroutine(PauseAndRunAgain(waitTimeBeingShot));
+        berzerkerModeOn = true;
     }
 
-
-    public void ReactToKick(Vector3 destination)
+    public void ReactToKick(Vector3 lastDestination)
     {
-        rend.material = matFrozen;
+        Look.Freeze();
         state = EnemyState.WASTED;
-        moveDestination = destination;
+        if (OnPause != null)
+            StopCoroutine(OnPause);
+        currSpeed = movingSpeed;
+
+        // no underground, no flying high
+        lastDestination.y = 0;
+        moveDestination = lastDestination;
+    }
+
+    public void ReactToLava()
+    {
+        if (OnPause != null)
+            StopCoroutine(OnPause);
+        Destroy(gameObject);
+        Messenger<int>.Broadcast(GameEvent.ENEMY_IS_DEAD, score);
+    }
+
+    public void ReactToFriendlyCollision(Collider coll)
+    {
+        // should be true by design, but check just in case
+        IEnemy collidedEnemy = coll.gameObject.GetComponent<IEnemy>();
+        if (collidedEnemy == null)
+            return;
+
+        // first variation: wasted on the fly and any other on march
+        if (state == EnemyState.WASTED)
+            collidedEnemy.ReactToKick((Vector3)moveDestination);
+
+        // second variation: both were on march
+        else if (state != EnemyState.SHOT && state != EnemyState.WASTED && collidedEnemy.state != EnemyState.WASTED)
+        {
+            state = EnemyState.TRAFFIC_ACCIDENT;
+
+            Vector3 pbDestination = transform.position - coll.transform.position;
+            pbDestination.y = 0;
+            moveDestination = pbDestination;
+
+            currSpeed = movingSpeed;
+        }
     }
 
 }

@@ -4,16 +4,28 @@ using UnityEngine;
 
 public class PlayerShooting : MonoBehaviour
 {
+    private PlayerLook Look;
     public bool canShoot { get; private set; }
     public float reloadTime { get; private set; }
+
+    private void OnEnable()
+    {
+        Messenger.AddListener(GameEvent.GUN_RELOADED, OnReloaded);
+    }
+
+    private void OnDisable()
+    {
+        Messenger.RemoveListener(GameEvent.GUN_RELOADED, OnReloaded);
+    }
 
     private void Start()
     {
         canShoot = true;
-        reloadTime = 0.8f;
+        reloadTime = 3f;
+        Look = GetComponent<PlayerLook>();
     }
 
-    private void Update()
+    public void Shoot()
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -25,14 +37,17 @@ public class PlayerShooting : MonoBehaviour
                 projectile.transform.position = transform.position; // position it at player
                 projectile.transform.rotation = transform.rotation;
                 canShoot = false;
-                StartCoroutine(Reload());
             }
         }
     }
 
-    private IEnumerator Reload()
+    public void Reload(PlayerLook look)
     {
-        yield return new WaitForSeconds(reloadTime);
+        StartCoroutine(look.Reload(reloadTime));
+    }
+
+    private void OnReloaded()
+    {
         canShoot = true;
     }
 

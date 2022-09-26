@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class LevelManager : MonoBehaviour, IGameManager
+public class LevelManager : MonoBehaviour, IManager
 {
     public ManagerStatus status { get; private set; }
     public float tileSize { get; private set; }
@@ -12,7 +12,14 @@ public class LevelManager : MonoBehaviour, IGameManager
     public float LavaBound { get; private set; }
     public Bounds SurfaceBounds { get; private set; }
     private int currLevel;
+    private int maxLevel;
+    public int LevelScore { get; private set; }
     private bool checkIfLevelCompleted;
+
+    private void Awake()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
     public void Init()
     {
         Debug.Log("Level manager starting...");
@@ -21,8 +28,8 @@ public class LevelManager : MonoBehaviour, IGameManager
         tileSize = 1.0f;
         gravity = -9.8f;
 
-        currLevel = 1;
-        GetLevelData();
+        // !! change it every time you adding the new levels
+        maxLevel = 2;
 
         checkIfLevelCompleted = false;
 
@@ -31,12 +38,14 @@ public class LevelManager : MonoBehaviour, IGameManager
 
     private void OnEnable()
     {
-        Messenger.AddListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
+        Messenger<int>.AddListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
+        Messenger.AddListener(StartupEvent.MANAGERS_STARTED, OnManagersStarted);
     }
 
     private void OnDisable()
     {
-        Messenger.RemoveListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
+        Messenger<int>.RemoveListener(GameEvent.ENEMY_IS_DEAD, OnEnemyDeath);
+        Messenger.RemoveListener(StartupEvent.MANAGERS_STARTED, OnManagersStarted);
     }
 
     public float GetLavaBoundary()
@@ -63,7 +72,7 @@ public class LevelManager : MonoBehaviour, IGameManager
     {
         Bounds bounds = new Bounds(Vector3.zero, Vector3.zero);
         GameObject[] surface = GameObject.FindGameObjectsWithTag("Surface");
-        
+
         for (int i = 0; i < surface.Length; i++)
         {
             Vector3 surfaceCenter = surface[i].transform.position;
@@ -85,16 +94,13 @@ public class LevelManager : MonoBehaviour, IGameManager
 
     private void Update()
     {
-        if (checkIfLevelCompleted) { 
+        // why this is in the update and not in the OnEnemyDeath function?
+        // because it should be called on the NEXT frame after enemy death
+        if (checkIfLevelCompleted)
+        {
             EnemyCount = GameObject.FindGameObjectsWithTag("Enemy").Length;
             if (EnemyCount == 0)
-            {
-                Messenger.Broadcast(GameEvent.LEVEL_BEATEN);
-            }
-            else
-            {
-                Debug.Log(EnemyCount);
-            }
+                Messenger<int>.Broadcast(GameEvent.LEVEL_BEATEN, LevelScore);
             checkIfLevelCompleted = false;
         }
     }
@@ -102,22 +108,35 @@ public class LevelManager : MonoBehaviour, IGameManager
     public void LoadNextLevel()
     {
         currLevel += 1;
-        if (currLevel <= 2)
-            SceneManager.LoadScene($"Level{currLevel}");
-        else
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        
-        GetLevelData();
+            if (currLevel <= maxLevel)
+                SceneManager.LoadScene($"Level{currLevel}");
+            else
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    public void GetLevelData() { 
-        EnemyCount = currLevel /** 3*/;
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        GetLevelData();
+        Messenger.Broadcast(GameEvent.LEVEL_START);
+    }
+
+    public void GetLevelData()
+    {
+        EnemyCount = currLevel * 2;
+        LevelScore = currLevel * 10;
         LavaBound = GetLavaBoundary();
         SurfaceBounds = GetSurfaceBounds();
     }
 
-    public void OnEnemyDeath()
+    private void OnEnemyDeath(int score)
     {
         checkIfLevelCompleted = true;
+    }
+
+    private void OnManagersStarted()
+    {
+        currLevel = 1;
+        // maybe it's good this line is here?
+        // can be handy when/if restart from level X would be possible
     }
 }

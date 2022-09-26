@@ -8,26 +8,30 @@ using UnityEngine.SceneManagement;
 [RequireComponent(typeof(LevelManager))]
 [RequireComponent(typeof(PlayerManager))]
 [RequireComponent(typeof(SpawnManager))]
+[RequireComponent(typeof(ScoreManager))]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
-    private List<IGameManager> startSequence;
+    private List<IManager> startSequence;
     public LevelManager Level { get; private set; }
     public PlayerManager Player { get; private set; }
     public SpawnManager Spawn { get; private set; }
+    public ScoreManager Score { get; private set; }
 
     private bool paused;
 
     private void OnEnable()
     {
         Messenger.AddListener(GameEvent.GAME_OVER, OnGameOver);
-        Messenger.AddListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger.AddListener(GameEvent.LEVEL_START, OnLevelStart);
+        Messenger<int>.AddListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
     }
 
     private void OnDisable()
     {
         Messenger.RemoveListener(GameEvent.GAME_OVER, OnGameOver);
-        Messenger.RemoveListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
+        Messenger.RemoveListener(GameEvent.LEVEL_START, OnLevelStart);
+        Messenger<int>.RemoveListener(GameEvent.LEVEL_BEATEN, OnLevelBeaten);
     }
 
     private void Awake()
@@ -39,26 +43,26 @@ public class GameManager : MonoBehaviour
             return;
         }
         Instance = this;
-        Instance.paused = false;
+        paused = false;
 
         Level = GetComponentInChildren<LevelManager>();
         Player = GetComponentInChildren<PlayerManager>();
         Spawn = GetComponentInChildren<SpawnManager>();
+        Score = GetComponentInChildren<ScoreManager>();
 
-        startSequence = new List<IGameManager>();
+        startSequence = new List<IManager>();
         startSequence.Add(Level);
         startSequence.Add(Player);
         startSequence.Add(Spawn);
+        startSequence.Add(Score);
 
         StartCoroutine(InitializeManagers());
     }
 
     private IEnumerator InitializeManagers()
     {
-        foreach (IGameManager manager in startSequence)
-        {
+        foreach (IManager manager in startSequence)
             manager.Init();
-        }
 
         yield return null;
 
@@ -70,7 +74,7 @@ public class GameManager : MonoBehaviour
             int lastReady = numReady;
             numReady = 0;
 
-            foreach (IGameManager manager in startSequence)
+            foreach (IManager manager in startSequence)
             {
                 if (manager.status == ManagerStatus.Started)
                     numReady++;
@@ -79,15 +83,15 @@ public class GameManager : MonoBehaviour
             if (numReady > lastReady)
             {
                 Debug.Log($"Progress: {numReady}/{numModules}");
-                // for the better future!
-                // Messenger<int, int>.Broadcast(StartupEvent.MANAGERS_PROGRESS, numReady, numModules);
+                // probably no need
+                // Messenger<int, int>.Broadcast(StartupEvent.MANAGERS_PROGRESS, numReady, numModules, MessengerMode.DONT_REQUIRE_LISTENER);
             }
             yield return null;
         }
 
         Debug.Log("All managers started up");
-        // for the better future!
-        // Messenger.Broadcast(StartupEvent.MANAGERS_STARTED);
+        
+        Messenger.Broadcast(StartupEvent.MANAGERS_STARTED);
     }
 
     private void PauseGame()
@@ -104,26 +108,33 @@ public class GameManager : MonoBehaviour
         PauseGame();
         StartCoroutine(WaitAndLoadMainMenu());
     }
-    private void OnLevelBeaten()
+    private void OnLevelBeaten(int score)
     {
         PauseGame();
         StartCoroutine(WaitAndLoadNextLevel());
+    }
+
+    private void OnLevelStart()
+    {
+        Transform playerTransform = Player.Spawn();
+        GetComponentInChildren<CameraMovement>().Init(playerTransform);
+        Spawn.SpawnEnemies(playerTransform.position, Level.EnemyCount);
     }
 
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (Instance.paused)
+            if (paused)
             {
                 ResumeGame();
-                Instance.paused = false;
+                paused = false;
                 Messenger.Broadcast(GameEvent.UNPAUSE);
             }
             else
             {
                 PauseGame();
-                Instance.paused = true;
+                paused = true;
                 Messenger.Broadcast(GameEvent.PAUSE);
             }
         }
@@ -133,13 +144,12 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(3);
 
-        int maxHealth = Instance.Player.maxHealth;
-        Instance.Player.UpdateData(maxHealth, maxHealth);
+        int maxHealth = Player.maxHealth;
+        Player.UpdateData(maxHealth, maxHealth);
 
-        Instance.Level.LoadNextLevel();
+        Level.LoadNextLevel();
         ResumeGame();
         yield return new WaitForNextFrameUnit();
-        Instance.Spawn.SpawnEnemies(Instance.Level.EnemyCount);
     }
 
     private IEnumerator WaitAndLoadMainMenu()

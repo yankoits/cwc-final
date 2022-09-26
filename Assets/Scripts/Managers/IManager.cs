@@ -1,4 +1,4 @@
-public interface IGameManager
+public interface IManager
 {
     ManagerStatus status { get; }
     void Init();

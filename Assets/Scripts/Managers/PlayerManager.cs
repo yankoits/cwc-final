@@ -1,12 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
-public class PlayerManager : MonoBehaviour, IGameManager
+public class PlayerManager : MonoBehaviour, IManager
 {
     public ManagerStatus status { get; private set; }
     public int maxHealth { get; private set; }
     public int health { get; private set; }
+
+    [SerializeField] GameObject playerPrefab;
     public void Init()
     {
         Debug.Log("Player manager starting...");
@@ -15,6 +18,13 @@ public class PlayerManager : MonoBehaviour, IGameManager
         UpdateData(5, 5);
 
         status = ManagerStatus.Started;
+    }
+
+
+    public Transform Spawn()
+    {
+        GameObject player = Instantiate(playerPrefab);
+        return player.transform;
     }
 
     public void UpdateData(int health, int maxHealth)
